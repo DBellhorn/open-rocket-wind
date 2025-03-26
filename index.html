@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title>GPS DriftCast</title>
+
+        <link rel="apple-touch-icon" sizes="180x180" href="./images/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon-16x16.png">
+        <link rel="icon" type="image/svg+xml" href="./images/parachute-iconcon.svg">
+        <link rel="manifest" href="./images/site.webmanifest">
+
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <h1>OpenRocket Multi-Level Wind</h1>
+        <div class="container-centered">
+            <fieldset class="fieldset_location">
+                <legend>Location</legend>
+                <p>
+                    <select name="select_launch_site" id="select_launch_site" disabled>
+                        <option value="no_saves">No Saved Launch Sites Found</option>
+                    </select>
+                </p>
+                <p>
+                    <label for="launch_site_latitude">*Latitude</label>
+                    <input type="text" name="launch_site_latitude" id="launch_site_latitude" value="" placeholder="30.614631"/>
+                </p>
+                <p>
+                    <label for="launch_site_longitude">*Longitude</label>
+                    <input type="text" name="launch_site_longitude" id="launch_site_longitude" value="" placeholder="-97.495914"/>
+                </p>
+            </fieldset>
+        </div>
+        <br>
+        <div class="container-centered">
+            <fieldset class="fieldset_launch">
+                <legend>Date and Time</legend>
+                <p>
+                    <label for="launch_date">*Launch Date</label>
+                    <input type="date" name="launch_date" id="launch_date" />
+                </p>
+                <p>
+                    <label for="launch_time">*Launch Time</label>
+                    <input type="time" name="launch_time" id="launch_time" />
+                </p>
+            </fieldset>
+        </div>
+        <br>
+        <div class="container-centered">
+            <button type="button" id="btn_fetch_wind_forecast">Get Wind Forecast</button>
+        </div>
+        <br>
+        <div class="container-centered">
+            <h2 id="status_display">Please refresh the wind forecast when you are ready.</h2>
+        </div>
+        <br>
+        <div class="container-centered">
+            <button type="button" id="btn_save_csv_file" disabled="true">Save CSV File</button>
+        </div>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>
