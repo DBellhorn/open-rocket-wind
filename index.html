@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
-        <title>GPS DriftCast</title>
+        <title>ORWind</title>
 
         <link rel="apple-touch-icon" sizes="180x180" href="./images/apple-touch-icon.png">
         <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32x32.png">
@@ -14,50 +14,146 @@
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
-        <h1>OpenRocket Multi-Level Wind</h1>
-        <div class="container-centered">
-            <fieldset class="fieldset_location">
+        <header>
+            <h1>OpenRocket Multi-Level Wind</h1>
+            <p>Generate a CSV file containing multi-level wind for use with the latest <a href="https://openrocket.info/">OpenRocket</a>.</p>
+            <p>Wind forecasts are available for the next 2 weeks and 1 previous week.  Times are in your local timezone.  Weather is generously provided by <a href="https://open-meteo.com/">Open-Meteo</a>.</p>
+            <p>There are optional controls to adjust the CSV contents.  All fields start with the same default values as <a href="https://openrocket.info/">OpenRocket</a>.</p>
+        </header>
+        <div class="main-container">
+            <fieldset class="input-fieldset">
                 <legend>Location</legend>
-                <p>
-                    <select name="select_launch_site" id="select_launch_site" disabled>
-                        <option value="no_saves">No Saved Launch Sites Found</option>
-                    </select>
-                </p>
-                <p>
-                    <label for="launch_site_latitude">*Latitude</label>
-                    <input type="text" name="launch_site_latitude" id="launch_site_latitude" value="" placeholder="30.614631"/>
-                </p>
-                <p>
-                    <label for="launch_site_longitude">*Longitude</label>
-                    <input type="text" name="launch_site_longitude" id="launch_site_longitude" value="" placeholder="-97.495914"/>
-                </p>
+                <div class="input-container">
+                    <label for="location-latitude" class="input-label">Latitude</label>
+                    <input type="text" name="location-latitude" id="location-latitude" value="" placeholder="Ex: 30.614631"/>
+                </div>
+                <div class="input-container">
+                    <label for="location-longitude" class="input-label">Longitude</label>
+                    <input type="text" name="location-longitude" id="location-longitude" value="" placeholder="Ex: -97.495914"/>
+                </div>
             </fieldset>
-        </div>
-        <br>
-        <div class="container-centered">
-            <fieldset class="fieldset_launch">
+            <fieldset class="input-fieldset">
                 <legend>Date and Time</legend>
-                <p>
-                    <label for="launch_date">*Launch Date</label>
-                    <input type="date" name="launch_date" id="launch_date" />
-                </p>
-                <p>
-                    <label for="launch_time">*Launch Time</label>
-                    <input type="time" name="launch_time" id="launch_time" />
-                </p>
+                <div class="input-container">
+                    <label for="launch_date" class="input-label">Date</label>
+                    <input type="date" name="launch_date" id="launch_date"/>
+                </div>
+                <div class="input-container">
+                    <label for="launch_time" class="input-label">Time</label>
+                    <input type="time" name="launch_time" id="launch_time"/>
+                </div>
             </fieldset>
         </div>
-        <br>
-        <div class="container-centered">
-            <button type="button" id="btn_fetch_wind_forecast">Get Wind Forecast</button>
+        <div class="control-container">
+            <div class="button-container">
+                <button type="button" id="btn_fetch_wind_forecast">Get Wind Forecast</button>
+            </div>
+            <div class="feedback-container">
+                <div id="status_display">Please refresh the wind forecast when you are ready.</div>
+            </div>
         </div>
-        <br>
-        <div class="container-centered">
-            <h2 id="status_display">Please refresh the wind forecast when you are ready.</h2>
+        <div class="csv-options-toggle">
+            <input type="checkbox" name="show-csv-options" id="show-csv-options"/>
+            <label for="show-csv-options" id="show-csv-label">Show CSV Options</label>
         </div>
-        <br>
-        <div class="container-centered">
-            <button type="button" id="btn_save_csv_file" disabled="true">Save CSV File</button>
+        <div class="csv-options-container" id="csv-options-container" hidden>
+            <div class="main-container">
+                <fieldset class="input-fieldset">
+                    <legend>Wind Speed</legend>
+                    <div class="input-container">
+                        <label for="speed-name" class="input-label">Name</label>
+                        <input type="text" name="speed-name" id="speed-name" value="speed"/>
+                    </div>
+                    <div class="input-container">
+                        <label for="speed-unit" class="input-label">Unit</label>
+                        <select id="speed-unit" name="speed-unit">
+                            <option value="0">m/s</option>
+                            <option value="1">km/s</option>
+                            <option value="2">ft/s</option>
+                            <option value="3">mph</option>
+                            <option value="4">kt</option>
+                        </select>
+                    </div>
+                </fieldset>
+                <fieldset class="input-fieldset">
+                    <legend>Wind Direction</legend>
+                    <div class="input-container">
+                        <label for="direction-name" class="input-label">Name</label>
+                        <input type="text" name="direction-name" id="direction-name" value="direction"/>
+                    </div>
+                    <div class="input-container">
+                        <label for="direction-unit" class="input-label">Unit</label>
+                        <select id="direction-unit" name="direction-unit">
+                            <option value="0">Degrees</option>
+                            <option value="1">Radians</option>
+                            <option value="2">Arcmin</option>
+                        </select>
+                    </div>
+                </fieldset>
+                <fieldset class="input-fieldset">
+                    <legend>Altitude</legend>
+                    <div class="input-container">
+                        <label for="altitude-name" class="input-label">Name</label>
+                        <input type="text" name="altitude-name" id="altitude-name" value="altitude"/>
+                    </div>
+                    <div class="input-container">
+                        <label for="altitude-unit" class="input-label">Units</label>
+                        <select id="altitude-unit" name="altitude-unit">
+                            <option value="0">m</option>
+                            <option value="1">km</option>
+                            <option value="2">ft</option>
+                            <option value="3">yd</option>
+                            <option value="4">mi</option>
+                            <option value="5">nmi</option>
+                        </select>
+                    </div>
+                    <div class="input-container">
+                        <label for="altitude-reference" class="input-label">Reference</label>
+                        <select id="altitude-reference" name="altitude-reference">
+                            <option value="0">MSL</option>
+                            <option value="1">AGL</option>
+                        </select>
+                    </div>
+                </fieldset>
+                <fieldset class="input-fieldset">
+                    <legend>Standard Deviation</legend>
+                    <div class="input-container">
+                        <label for="deviation-name" class="input-label">Name</label>
+                        <input type="text" name="deviation-name" id="deviation-name" value="stddev"/>
+                    </div>
+                    <div class="input-container">
+                        <label for="deviation-unit" class="input-label">Unit</label>
+                        <select id="deviation-unit" name="deviation-unit">
+                            <option value="0">m/s</option>
+                            <option value="1">km/s</option>
+                            <option value="2">ft/s</option>
+                            <option value="3">mph</option>
+                            <option value="4">kt</option>
+                        </select>
+                    </div>
+                    <div class="input-container">
+                        <label for="deviation-value" class="input-label">Value</label>
+                        <input type="number" name="deviation-value" id="deviation-value" min="0.0" max="2.0" step="0.1" value="0.2"/>
+                    </div>
+                </fieldset>
+                <fieldset class="input-fieldset">
+                    <legend>Field Separator</legend>
+                    <div class="input-container">
+                        <label for="field-separator" class="input-label">Value</label>
+                        <select id="field-separator" name="field-separator">
+                            <option value="0">Comma</option>
+                            <option value="1">Semicolon</option>
+                            <option value="2">Space</option>
+                            <option value="3">Tab</option>
+                        </select>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+        <div class="control-container">
+            <div class="button-container">
+                <button type="button" id="btn_save_csv_file" disabled="true">Save CSV File</button>
+            </div>
         </div>
         <script type="module" src="main.js"></script>
     </body>
