@@ -39,7 +39,8 @@ const statusDisplayId = 'status_display';
 
 // Pulled from wind.js
 const openMeteoWindAltitudes = [10, 80, 120, 180];
-const openMeteoPressureLevels = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 70, 50, 30, 20, 15, 10];
+const openMeteoPressureLevels = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150];
+const maxOpenRocketAltitude = 10999;
 
 // Potential field separator characters for CSV files.
 const csvFieldSeparators = [',', ';', ' ', '\t'];
@@ -774,14 +775,47 @@ async function saveORWindCSV() {
             }
 
             // Now add all the atmospheric pressure based wind.
-            for (const presWind of pressureWinds) {
+            for (let windIndex = 0; windIndex < pressureWinds.length; ++windIndex) {
+                const presWind = pressureWinds[windIndex];
+
                 if (0 == windList.length) {
                     // Set ground wind values if no altitude entry was used.
                     groundWindSpeed = presWind.windSpeed;
                     groundWindDirection = presWind.windDirection;
                     windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
                 }
-                windList.push(presWind);
+
+                // OpenRocket does not support altitudes above 11km MSL.
+                if (presWind.altitude < maxOpenRocketAltitude) {
+                    windList.push(presWind);
+                } else if (windIndex > 0) {
+                    // Interpolate wind speed and direction values at 11km altitude.
+                    // Nothing to do for now if the next adjusted altitude is also negative.
+                    const previousWind = pressureWinds[windIndex - 1];
+                    const bandRatio = Math.abs((maxOpenRocketAltitude - previousWind.altitude) / (presWind.altitude - previousWind.altitude));
+
+                    // Start with wind speed.
+                    const windSpeed = previousWind.windSpeed + (bandRatio * (presWind.windSpeed - previousWind.windSpeed));
+
+                    // Wind direction needs to account for wrapping around zero degrees.
+                    const directionA = previousWind.windDirection;
+                    const directionB = presWind.windDirection;
+                    const targetDirection = directionA + (bandRatio * (directionB - directionA));
+                    let averageDirection = directionA + targetDirection;
+                    if (Math.abs(directionA - targetDirection) < 180.0) {
+                        averageDirection = averageDirection / 2.0;
+                    } else {
+                        // Maintain a northerly direction as the bearing oscillates around zero degrees
+                        averageDirection = (averageDirection - 360.0) / 2.0;
+                        if (averageDirection < 0.0) {
+                            averageDirection += 360.0;
+                        }
+                    }
+
+                    // Insert the interpolated values as the final array entry.
+                    windList.push(new WindAtAltitude(maxOpenRocketAltitude, windSpeed, averageDirection));
+                    break;
+                }
             }
         } else {
             // Find the first wind entry above ground level.
