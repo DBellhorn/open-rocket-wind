@@ -17,7 +17,7 @@
         <header>
             <h1>OpenRocket Multi-Level Wind</h1>
             <p>Generate a CSV file containing multi-level wind for use with the latest <a href="https://openrocket.info/">OpenRocket</a>.</p>
-            <p>Wind forecasts are available for the next 2 weeks and 1 previous week.  Times are in your local timezone.  Weather is generously provided by <a href="https://open-meteo.com/">Open-Meteo</a>.</p>
+            <p>Wind forecasts are available for the next 2 weeks and 1 previous week.  Times are in your local timezone.  Weather data is generously provided by <a href="https://open-meteo.com/">Open-Meteo</a>.</p>
             <p>There are optional controls to adjust the CSV contents.  All fields start with the same default values as <a href="https://openrocket.info/">OpenRocket</a>.</p>
         </header>
         <div class="main-container">
@@ -52,12 +52,9 @@
                 <div id="status_display">Please refresh the wind forecast when you are ready.</div>
             </div>
         </div>
-        <div class="csv-options-toggle">
-            <input type="checkbox" name="show-csv-options" id="show-csv-options"/>
-            <label for="show-csv-options" id="show-csv-label">Show CSV Options</label>
-        </div>
-        <div class="csv-options-container" id="csv-options-container" hidden>
-            <div class="main-container">
+        <div class="csv-options-toggle" id="csv-options-toggle">Show CSV Options</div>
+        <div class="csv-options-collapsable" id="csv-options-collapsable">
+            <div class="csv-options-container">
                 <fieldset class="input-fieldset">
                     <legend>Wind Speed</legend>
                     <div class="input-container">

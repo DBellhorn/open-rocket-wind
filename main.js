@@ -13,8 +13,8 @@ const waiverAltitudeId = 'waiver_altitude';
 const btnFetchWindForecastId = 'btn_fetch_wind_forecast';
 const btnSaveCsvFileId = 'btn_save_csv_file';
 
-const showCsvOptionsId = 'show-csv-options';
-const csvOptionsContainerId = 'csv-options-container';
+const csvOptionsToggleId = 'csv-options-toggle';
+const csvOptionsContainerId = 'csv-options-collapsable';
 const windSpeedNameId = 'speed-name';
 const windSpeedUnitId = 'speed-unit';
 const windDirectionNameId = 'direction-name';
@@ -322,11 +322,19 @@ window.onload = () => {
 
     // Toggle CSV option visiblity.
     const csvOptionsContainer = document.getElementById(csvOptionsContainerId);
-    const showCsvOptionsCheckbox = document.getElementById(showCsvOptionsId);
-    if (null != csvOptionsContainer && null != showCsvOptionsCheckbox) {
-        showCsvOptionsCheckbox.addEventListener('change', (event) => {
-            csvOptionsContainer.hidden = !showCsvOptionsCheckbox.checked;
-        })
+    const showCsvButton = document.getElementById(csvOptionsToggleId);
+    if (null != showCsvButton) {
+        showCsvButton.addEventListener('click', () => {
+            showCsvButton.classList.toggle('active');
+
+            if (csvOptionsContainer.style.maxHeight){
+                csvOptionsContainer.style.maxHeight = null;
+                showCsvButton.value = 'Show CSV Options';
+            } else {
+                csvOptionsContainer.style.maxHeight = csvOptionsContainer.scrollHeight + "px";
+                showCsvButton.value = 'Hide CSV Options';
+            }
+        });
     }
 
     // addRefreshWindForecastListener(windSpeedNameId);
