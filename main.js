@@ -38,9 +38,8 @@ const selLaunchSiteNameId = 'select_launch_site';
 const statusDisplayId = 'status_display';
 
 // Pulled from wind.js
-const openMeteoWindAltitudes = [10, 80, 120, 180];
-const openMeteoPressureLevels = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150];
-const maxOpenRocketAltitude = 10999;
+const openMeteoWindAltitudes = [10, 80, 120];
+const openMeteoPressureLevels = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 70, 50, 30, 20, 15, 10];
 
 // Potential field separator characters for CSV files.
 const csvFieldSeparators = [',', ';', ' ', '\t'];
@@ -473,7 +472,6 @@ window.onload = () => {
     });
 
     document.getElementById(btnSaveCsvFileId).addEventListener('click', async () => {
-        //saveWindForecastJson();
         saveORWindCSV();
     });
 }
@@ -563,6 +561,9 @@ async function requestOpenMeteoWind() {
     // Specify the launch's active hours.
     fetchRequest += `&start_hour=${launchTimes.getStartTimeAsISOString()}&end_hour=${launchTimes.getStartTimeAsISOString()}`;
 
+    // Use the launch site's timezone
+    fetchRequest += '&timezone=auto';
+
     // Request wind speeds to be in meters per second.
     fetchRequest += '&wind_speed_unit=ms';
 
@@ -599,12 +600,13 @@ async function requestOpenMeteoWind() {
     for (const pressure of openMeteoPressureLevels) {
         fetchRequest +=`,geopotential_height_${pressure}hPa`;
     }
+
+    console.log(fetchRequest);
     
     try {
         const openMeteoPromise = await fetch(fetchRequest);
 
         if (openMeteoPromise.ok) {
-            console.log('Open-Meteo fetch promise is OK.');
             openMeteoWindJSON = await openMeteoPromise.json();
 
             if (null == openMeteoWindJSON) {
@@ -666,11 +668,7 @@ async function saveORWindCSV() {
     }
 
     if ('hourly' in openMeteoWindJSON) {
-        console.log(`Open-Meteo JSON contains [hourly] data.`);
-
-        if ('time' in openMeteoWindJSON.hourly) {
-            console.log(`Open-Meteo JSON contains ${openMeteoWindJSON.hourly.time.length} [time] data.`);
-        } else {
+        if (('time' in openMeteoWindJSON.hourly) === false) {
             if (null != statusDisplayElement) {
                 statusDisplayElement.textContent = 'Open-Meteo JSON has no [time] data.';
             } else {
@@ -753,9 +751,7 @@ async function saveORWindCSV() {
                 continue;
             }
 
-            //if (altitude > 0) {
-                pressureWinds.push(new WindAtAltitude(windHeight, windSpeed, windDirection));
-            //}
+            pressureWinds.push(new WindAtAltitude(windHeight, windSpeed, windDirection));
         }
     }
 
@@ -793,37 +789,7 @@ async function saveORWindCSV() {
                     windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
                 }
 
-                // OpenRocket does not support altitudes above 11km MSL.
-                if (presWind.altitude < maxOpenRocketAltitude) {
-                    windList.push(presWind);
-                } else if (windIndex > 0) {
-                    // Interpolate wind speed and direction values at 11km altitude.
-                    // Nothing to do for now if the next adjusted altitude is also negative.
-                    const previousWind = pressureWinds[windIndex - 1];
-                    const bandRatio = Math.abs((maxOpenRocketAltitude - previousWind.altitude) / (presWind.altitude - previousWind.altitude));
-
-                    // Start with wind speed.
-                    const windSpeed = previousWind.windSpeed + (bandRatio * (presWind.windSpeed - previousWind.windSpeed));
-
-                    // Wind direction needs to account for wrapping around zero degrees.
-                    const directionA = previousWind.windDirection;
-                    const directionB = presWind.windDirection;
-                    const targetDirection = directionA + (bandRatio * (directionB - directionA));
-                    let averageDirection = directionA + targetDirection;
-                    if (Math.abs(directionA - targetDirection) < 180.0) {
-                        averageDirection = averageDirection / 2.0;
-                    } else {
-                        // Maintain a northerly direction as the bearing oscillates around zero degrees
-                        averageDirection = (averageDirection - 360.0) / 2.0;
-                        if (averageDirection < 0.0) {
-                            averageDirection += 360.0;
-                        }
-                    }
-
-                    // Insert the interpolated values as the final array entry.
-                    windList.push(new WindAtAltitude(maxOpenRocketAltitude, windSpeed, averageDirection));
-                    break;
-                }
+                windList.push(presWind);
             }
         } else {
             // Find the first wind entry above ground level.
@@ -1002,7 +968,7 @@ async function saveORWindCSV() {
                 const bandRatio = Math.abs(windAltitude / (nextAltitude - windAltitude));
 
                 // Start with wind speed.
-                windSpeed = windSpeed + (bandRatio * (windList[altitudeIndex + 1].windSpeed - windSpeed));
+                windSpeed = (windSpeed + (bandRatio * (windList[altitudeIndex + 1].windSpeed - windSpeed))).toFixed(1);
 
                 // Wind direction needs to account for wrapping around zero degrees.
                 const directionA = windDirection;
@@ -1028,35 +994,35 @@ async function saveORWindCSV() {
         // Default m
         switch (altitudeUnitIndex) {
             case 1: // km
-                windAltitude /= 1000.0;
+                windAltitude = (windAltitude / 1000.0).toFixed(1);
                 break;
             case 2: // ft
-                windAltitude *= 3.281;
+                windAltitude = (windAltitude * 3.281).toFixed(1);
                 break;
             case 3: // yd
-                windAltitude *= 1.094;
+                windAltitude = (windAltitude * 1.094).toFixed(1);
                 break;
             case 4: // mi
-                windAltitude /= 1609.0;
+                windAltitude = (windAltitude / 1609.0).toFixed(1);
                 break;
             case 5: // nmi
-                windAltitude /= 1852.0;
+                windAltitude = (windAltitude / 1852.0).toFixed(1);
                 break;
         }
 
         // Default m/s
         switch (windSpeedUnitIndex) {
             case 1: // km/s
-                windSpeed /= 1000.0;
+                windSpeed = (windSpeed / 1000.0).toFixed(1);
                 break;
             case 2: // ft/s
-                windSpeed *= 3.281;
+                windSpeed = (windSpeed * 3.281).toFixed(1);
                 break;
             case 3: // mph
-                windSpeed *= 2.237;
+                windSpeed = (windSpeed * 2.237).toFixed(1);
                 break;
             case 4: // kt
-                windSpeed *= 1.944;
+                windSpeed = (windSpeed * 1.944).toFixed(1);
                 break;
         }
 
@@ -1069,24 +1035,21 @@ async function saveORWindCSV() {
             windDirection *= 60.0;
         }
 
-        stringArray.push(`${windAltitude}${fieldSeparator}${windSpeed}${fieldSeparator}${windDirection}${fieldSeparator}${standardDeviation}\n`);
+        if (windSpeed > 20.0) {
+            stringArray.push(`${windAltitude}${fieldSeparator}20.0${fieldSeparator}${Math.round(windDirection)}${fieldSeparator}${standardDeviation}\n`);
+        } else {
+            stringArray.push(`${windAltitude}${fieldSeparator}${windSpeed}${fieldSeparator}${Math.round(windDirection)}${fieldSeparator}${standardDeviation}\n`);
+        }
     }
-
-    //console.log(stringArray);
 
     const windCsvBlob = new Blob(stringArray);
 
     // Use the forecast's date and time to create a somewhat unique file name.
-    const utcYear = parseInt(openMeteoWindJSON.hourly.time[0].slice(0, 4));
-    const utcMonth = parseInt(openMeteoWindJSON.hourly.time[0].slice(5, 7));
-    const utcDate = parseInt(openMeteoWindJSON.hourly.time[0].slice(8, 10));
-    const utcHour = parseInt(openMeteoWindJSON.hourly.time[0].slice(11, 13));
-
-    const forecastDate = new Date(Date.UTC(utcYear, utcMonth - 1, utcDate, utcHour));
-    const forecastMonthString = `${forecastDate.getMonth() + 1}`;
-    const forecastDateString = `${forecastDate.getDate()}`;
-    const forecastHourString = `${forecastDate.getHours()}`;
-    const defaultName = `wind_${forecastDate.getFullYear()}-${forecastMonthString.padStart(2, '0')}-${forecastDateString.padStart(2, '0')}T${forecastHourString.padStart(2, '0')}.csv`;
+    const openMeteoYear = parseInt(openMeteoWindJSON.hourly.time[0].slice(0, 4));
+    const openMeteoMonth = parseInt(openMeteoWindJSON.hourly.time[0].slice(5, 7));
+    const openMeteoDate = parseInt(openMeteoWindJSON.hourly.time[0].slice(8, 10));
+    const openMeteoHour = parseInt(openMeteoWindJSON.hourly.time[0].slice(11, 13));
+    const defaultName = `wind_${openMeteoYear}-${openMeteoMonth.toString().padStart(2, '0')}-${openMeteoDate.toString().padStart(2, '0')}T${openMeteoHour.toString().padStart(2, '0')}.csv`;
 
     // Feature detection. The API needs to be supported
     // and the app not run in an iframe.
@@ -1152,105 +1115,4 @@ async function saveORWindCSV() {
         }, 1000);
     }
 
-}
-
-async function saveWindForecastJson() {
-    if (null == openMeteoWindJSON) {
-        console.log('Cannot save Open-Meteo JSON because the object is null.');
-        return;
-    }
-
-    if ('hourly' in openMeteoWindJSON) {
-        if ('time' in openMeteoWindJSON.hourly) {
-            console.log(`Open-Meteo JSON contains ${openMeteoWindJSON.hourly.time.length} [time] data.`);
-        } else {
-            console.log('Open-Meteo JSON has no [time] data.');
-            return;
-        }
-    } else {
-        console.log('Open-Meteo JSON has no [hourly] data.');
-        return;
-    }
-
-    // Stringify the JSON object
-    const jsonString = JSON.stringify(openMeteoWindJSON);
-
-    // Create a Blob object with the JSON string and set the content type as "application/json"
-    const forecastBlob = new Blob([jsonString], { type: "application/json" });
-
-    // Use the forecast's date and time to create a somewhat unique file name.
-    const utcYear = parseInt(openMeteoWindJSON.hourly.time[0].slice(0, 4));
-    const utcMonth = parseInt(openMeteoWindJSON.hourly.time[0].slice(5, 7));
-    const utcDate = parseInt(openMeteoWindJSON.hourly.time[0].slice(8, 10));
-    const utcHour = parseInt(openMeteoWindJSON.hourly.time[0].slice(11, 13));
-
-    const forecastDate = new Date(Date.UTC(utcYear, utcMonth - 1, utcDate, utcHour));
-    const forecastMonthString = `${forecastDate.getMonth() + 1}`;
-    const forecastDateString = `${forecastDate.getDate()}`;
-    const forecastHourString = `${forecastDate.getHours()}`;
-    const defaultName = `wind_${forecastDate.getFullYear()}-${forecastMonthString.padStart(2, '0')}-${forecastDateString.padStart(2, '0')}T${forecastHourString.padStart(2, '0')}.json`;
-
-    // Feature detection. The API needs to be supported
-    // and the app not run in an iframe.
-    const supportsFileSystemAccess = 'showSaveFilePicker' in window && (() => {
-        try {
-            return window.self === window.top;
-        } catch {
-            return false;
-        }
-    })();
-
-    // If the File System Access API is supported
-    if (supportsFileSystemAccess) {
-        try {
-            const filePickerOptions = {
-                types: [
-                    {
-                        description: 'JSON format',
-                        accept: { 'application/json': ['.json'] },
-                    },
-                ],
-                excludeAcceptAllOption: true,
-                multiple: false,
-                suggestedName: defaultName,
-            };
-
-            // Create a file save dialog for the user to select a location and name
-            const saveFileHandle = await showSaveFilePicker(filePickerOptions);
-
-            // Create a FileSystemWritableFileStream we can write to
-            const writableFile = await saveFileHandle.createWritable();
-            
-            // Write our blob's contents to the file
-            await writableFile.write(forecastBlob);
-
-            // Close the file and write the contents to disk
-            await writableFile.close();
-        } catch (err) {
-            // Fail silently if the user has simply canceled the dialog.
-            if (err.name !== 'AbortError') {
-                console.error(err.name, err.message);
-            }
-        }
-    } else {
-        // Fallback if the File System Access API is not supported
-        // Create the blob URL
-        const blobURL = URL.createObjectURL(forecastBlob);
-
-        // Create the `<a download>` element and append it invisibly.
-        const a = document.createElement('a');
-        a.href = blobURL;
-        a.download = defaultName;
-        a.style.display = 'none';
-        document.body.append(a);
-
-        // Programmatically click the element.
-        a.click();
-
-        // Revoke the blob URL and remove the element.
-        setTimeout(() => {
-            URL.revokeObjectURL(blobURL);
-            a.remove();
-        }, 1000);
-    }
 }
