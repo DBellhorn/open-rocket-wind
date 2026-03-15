@@ -2,6 +2,9 @@ import { GeoLocation } from "./geo.js";
 import { LaunchTimeData } from "./launch.js";
 import { WindAtAltitude } from "./wind.js";
 
+// The limit appears to have been a limitation of only the OpenRocket UI.
+// Submitting higher wind speeds through CSV submission works fine.
+const enforceWindSpeedLimit = false;
 
 // Declare some ID strings so they do not have to be in-line everywhere
 const launchSiteLatitudeId = 'location-latitude';
@@ -1021,7 +1024,7 @@ async function saveORWindCSV() {
             windDirection *= 60.0;
         }
 
-        if (windSpeed > 20.0) {
+        if (enforceWindSpeedLimit && windSpeed > 20.0) {
             stringArray.push(`${windAltitude}${fieldSeparator}20.0${fieldSeparator}${Math.round(windDirection)}${fieldSeparator}${standardDeviation}\n`);
         } else {
             stringArray.push(`${windAltitude}${fieldSeparator}${windSpeed}${fieldSeparator}${Math.round(windDirection)}${fieldSeparator}${standardDeviation}\n`);
