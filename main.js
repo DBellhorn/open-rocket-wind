@@ -10,7 +10,6 @@ const waiverLatitudeId = 'waiver_latitude';
 const waiverLongitudeId = 'waiver_longitude';
 const waiverRadiusId = 'waiver_radius';
 const waiverAltitudeId = 'waiver_altitude';
-const btnFetchWindForecastId = 'btn_fetch_wind_forecast';
 const btnSaveCsvFileId = 'btn_save_csv_file';
 
 const csvOptionsToggleId = 'csv-options-toggle';
@@ -104,22 +103,24 @@ function updateLaunchSiteDisplay(dbCursor) {
  * Update the UI elements to reflect a new wind forecast is required.
  */
 function askUserToRefreshWindForecast() {
-    const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-    if (null != fetchWindForecastButton) {
-        if (fetchWindForecastButton.disabled) {
-            // Allow the user to request a new wind forecast.
-            fetchWindForecastButton.disabled = false;
-
-            // Prevent the user from saving a CSV with the out of date forecast.
-            const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
-            if (null != saveCsvFileButton) {
-                saveCsvFileButton.disabled = true;
+    const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
+    if (null != saveCsvFileButton) {
+        const launchLocation = getLaunchSiteLocation();
+        const statusDisplayElement = document.getElementById(statusDisplayId);
+        if (null === launchLocation) {
+            // Let the user know something bad happened.
+            if (null != statusDisplayElement) {
+                statusDisplayElement.textContent = 'Waiting for launch details.';
             }
 
-            // Notify the user they need to request a new wind forecast.
-            const statusDisplayElement = document.getElementById(statusDisplayId);
+            saveCsvFileButton.disabled = true;
+        } else {
+            // Allow the user to request a new wind forecast.
+            saveCsvFileButton.disabled = false;
+
+            // Notify the user all launch details appear valid.
             if (null != statusDisplayElement) {
-                statusDisplayElement.textContent = 'Please refresh the wind forecast when you are ready.';
+                statusDisplayElement.textContent = 'Ready to create a multi-level wind file.';
             }
         }
     }
@@ -447,7 +448,7 @@ window.onload = () => {
         })
     }
 
-    document.getElementById(btnFetchWindForecastId).addEventListener('click', async () => {
+    document.getElementById(btnSaveCsvFileId).addEventListener('click', async (e) => {
         // Let the user know something is happening in the background.
         const statusDisplayElement = document.getElementById(statusDisplayId);
         if (null != statusDisplayElement) {
@@ -456,22 +457,9 @@ window.onload = () => {
         }
 
         // Prevent the user from requesting another forecast while this one is pending.
-        const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-        if (null != fetchWindForecastButton) {
-            fetchWindForecastButton.disabled = true;
-        }
+        e.target.disabled = true;
 
-        // Might as well prevent the user from generating a CSV with stale data.
-        const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
-        if (null != saveCsvFileButton) {
-            saveCsvFileButton.disabled = true;
-        }
-
-        // Calculate new drift and landing results
-        requestOpenMeteoWind();
-    });
-
-    document.getElementById(btnSaveCsvFileId).addEventListener('click', async () => {
+        // Kick off the wind forecast download and then generate the CSV file.
         saveORWindCSV();
     });
 }
@@ -515,9 +503,9 @@ async function requestOpenMeteoWind() {
         }
 
         // Allow the user to request a new wind forecast.
-        const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-        if (null != fetchWindForecastButton) {
-            fetchWindForecastButton.disabled = false;
+        const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
+        if (null !== saveCsvFileButton) {
+            saveCsvFileButton.disabled = false;
         }
         return openMeteoWindJSON;
     }
@@ -528,25 +516,25 @@ async function requestOpenMeteoWind() {
         }
 
         // Allow the user to request a new wind forecast.
-        const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-        if (null != fetchWindForecastButton) {
-            fetchWindForecastButton.disabled = false;
+        const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
+        if (null !== saveCsvFileButton) {
+            saveCsvFileButton.disabled = false;
         }
         return openMeteoWindJSON;
     }
 
     // Default to using the launch site's location for our apogee position
     const launchLocation = getLaunchSiteLocation();
-    if (null == launchLocation) {
+    if (null === launchLocation) {
         // Let the user know something bad happened.
         if (null != statusDisplayElement) {
             statusDisplayElement.textContent = 'Unable to get wind forecast without valid launch site coordinates.';
         }
 
         // Allow the user to request a new wind forecast.
-        const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-        if (null != fetchWindForecastButton) {
-            fetchWindForecastButton.disabled = false;
+        const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
+        if (null != saveCsvFileButton) {
+            saveCsvFileButton.disabled = false;
         }
         return openMeteoWindJSON;
     }
@@ -618,14 +606,14 @@ async function requestOpenMeteoWind() {
                 }
 
                 // Allow the user to request a new wind forecast.
-                const fetchWindForecastButton = document.getElementById(btnFetchWindForecastId);
-                if (null != fetchWindForecastButton) {
-                    fetchWindForecastButton.disabled = false;
+                const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
+                if (null != saveCsvFileButton) {
+                    saveCsvFileButton.disabled = false;
                 }
             } else {
                 // No need to continue showing our text feedback now that results are ready.
                 if (null != statusDisplayElement) {
-                    statusDisplayElement.textContent = 'Ready to generate CSV file.'
+                    statusDisplayElement.textContent = 'Creating the CSV file.'
                 }
 
                 // Allow the user to save now that valid drift and landing data is available.
@@ -656,17 +644,15 @@ async function requestOpenMeteoWind() {
  * Convert wind at altitude data into OpenRocket's expected CSV format.
  */
 async function saveORWindCSV() {
-    const statusDisplayElement = document.getElementById(statusDisplayId);
+    // Nothing can be done until the wind data has been obtained.
+    await requestOpenMeteoWind();
 
+    // Ensure valid wind data is now available.
     if (null == openMeteoWindJSON) {
-        if (null != statusDisplayElement) {
-            statusDisplayElement.textContent = 'Cannot save Open-Meteo JSON because the object is null.';
-        } else {
-            console.log('Cannot save Open-Meteo JSON because the object is null.');
-        }
         return;
     }
-
+    
+    const statusDisplayElement = document.getElementById(statusDisplayId);
     if ('hourly' in openMeteoWindJSON) {
         if (('time' in openMeteoWindJSON.hourly) === false) {
             if (null != statusDisplayElement) {
@@ -1088,10 +1074,15 @@ async function saveORWindCSV() {
             // Close the file and write the contents to disk
             await writableFile.close();
         } catch (err) {
-            // Fail silently if the user has simply canceled the dialog.
-            if (err.name !== 'AbortError') {
-                console.error(err.name, err.message);
+            if (null != statusDisplayElement) {
+                if (err.name == 'AbortError') {
+                    statusDisplayElement.textContent = 'Ready to create a multi-level wind file.';
+                }
+                else {
+                    statusDisplayElement.textContent = `Encountered an error: ${err.message}`;
+                }
             }
+            return;
         }
     } else {
         // Fallback if the File System Access API is not supported
@@ -1115,4 +1106,7 @@ async function saveORWindCSV() {
         }, 1000);
     }
 
+    if (null != statusDisplayElement) {
+        statusDisplayElement.textContent = 'Finished saving the multi-level wind file.';
+    }
 }
