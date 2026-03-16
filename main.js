@@ -194,17 +194,10 @@ window.onload = () => {
     // Initialize the date element to today
     launchDateElement.value = `${currentDate.getFullYear()}-${monthString}-${dayString}`;
 
-    // Prevent the user from selecting a date older than 9 days in the past
-    let oldestDate = new Date();
-    oldestDate.setTime(oldestDate.getTime() - (9 * 86400000));
-
-    launchDateElement.min = `${oldestDate.getFullYear()}-${(oldestDate.getMonth() + 1).toString().padStart(2, '0')}-${oldestDate.getDate().toString().padStart(2, '0')}`;
-
     // Cannot forecast more than 380 hours into the future. Using 15 days for now.
     const maxDate = new Date();
     maxDate.setTime(maxDate.getTime() + (15 * 86400000));
 
-    //launchDateElement.max = `${maxDate.getFullYear()}-${monthString}-${dayString}`;
     launchDateElement.max = `${maxDate.getFullYear()}-${(maxDate.getMonth() + 1).toString().padStart(2, '0')}-${maxDate.getDate().toString().padStart(2, '0')}`;
 
     // Initialize the time elements to the current hour plus a max offset
@@ -499,19 +492,6 @@ async function requestOpenMeteoWind() {
                                             document.getElementById(launchTimeId).value);
 
     // Verify the launch hour offsets are within our expectations
-    if (launchTimes.startHourOffset < -216) {
-        // Let the user know something bad happened.
-        if (null != statusDisplayElement) {
-            statusDisplayElement.textContent = 'Wind speeds older than 9 days are not available.';
-        }
-
-        // Allow the user to request a new wind forecast.
-        const saveCsvFileButton = document.getElementById(btnSaveCsvFileId);
-        if (null !== saveCsvFileButton) {
-            saveCsvFileButton.disabled = false;
-        }
-        return openMeteoWindJSON;
-    }
     if (launchTimes.startHourOffset > 360) {
         // Let the user know something bad happened.
         if (null != statusDisplayElement) {
@@ -547,7 +527,14 @@ async function requestOpenMeteoWind() {
     ////////////////////////////////////////////////////////////////////////////////
 
     // Begin forming a request for Open-Meteo's API with the launch location.
-    let fetchRequest = `https://api.open-meteo.com/v1/forecast?latitude=${launchLocation.latitude}&longitude=${launchLocation.longitude}`;
+    let fetchRequest = 'https://';
+
+    // Check if the launch occured more than a week in the past (7 x 24 = 168 hours)
+    if (launchTimes.startHourOffset < -168) {
+        fetchRequest += 'historical-forecast-';
+    }
+
+    fetchRequest += `api.open-meteo.com/v1/forecast?latitude=${launchLocation.latitude}&longitude=${launchLocation.longitude}`;
 
     // Specify the launch's active hours.
     fetchRequest += `&start_hour=${launchTimes.getStartTimeAsISOString()}&end_hour=${launchTimes.getStartTimeAsISOString()}`;
