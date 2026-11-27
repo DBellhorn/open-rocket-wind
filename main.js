@@ -733,93 +733,35 @@ async function saveORWindCSV() {
 
     let groundWindSpeed = 0;
     let groundWindDirection = 0;
+    let highestWindAltitude = -1;
     let windList = [];
 
-    // Combine altitude and pressure based winds into a single, ascending list.
-    // Preference is placed on altitude based winds as they seem most consistent.
-    if (pressureWinds.length > 0) {
-        if (pressureWinds[0].altitude > 0) {
-            // Use any altitude based data which is closer to ground.
-            for (const altWind of altitudeWinds) {
-                if (altWind.altitude < pressureWinds[0].altitude) {
-                    if (0 == windList.length) {
-                        // Set ground wind values based on the lowest entry.
-                        groundWindSpeed = altWind.windSpeed;
-                        groundWindDirection = altWind.windDirection;
-                        windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
-                    }
-                    windList.push(altWind);
-                } else {
-                    break;
-                }
-            }
-
-            // Now add all the atmospheric pressure based wind.
-            for (let windIndex = 0; windIndex < pressureWinds.length; ++windIndex) {
-                const presWind = pressureWinds[windIndex];
-
-                if (0 == windList.length) {
-                    // Set ground wind values if no altitude entry was used.
-                    groundWindSpeed = presWind.windSpeed;
-                    groundWindDirection = presWind.windDirection;
-                    windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
-                }
-
-                windList.push(presWind);
-            }
-        } else {
-            // Find the first wind entry above ground level.
-            let windIndex = 1
-            for (; windIndex < pressureWinds.length; ++windIndex) {
-                if (pressureWinds[windIndex].altitude > 0) {
-                    // Interpolate wind speed at zero altitude.
-                    const groundAltitudeRatio = Math.abs(pressureWinds[windIndex - 1].altitude) / (pressureWinds[windIndex].altitude - pressureWinds[windIndex - 1].altitude);
-                    const speedDelta = Math.abs(pressureWinds[windIndex].windSpeed - pressureWinds[windIndex - 1].windSpeed);
-                    if (0 == speedDelta) {
-                        groundWindSpeed = pressureWinds[windIndex].windSpeed;
-                    } else {
-                        groundWindSpeed = groundAltitudeRatio * speedDelta;
-                        if (pressureWinds[windIndex].windSpeed < pressureWinds[windIndex - 1].windSpeed) {
-                            groundWindSpeed += pressureWinds[windIndex].windSpeed;
-                        } else {
-                            groundWindSpeed += pressureWinds[windIndex - 1].windSpeed;
-                        }
-                    }
-
-                    // Interpolate wind direction at zero altitude.
-                    let directionDelta = Math.abs(pressureWinds[windIndex].windDirection - pressureWinds[windIndex - 1].windDirection);
-                    if (0 == directionDelta) {
-                        groundWindDirection = pressureWinds[windIndex].windDirection;
-                    } else if (directionDelta < 180.0) {
-                        // Perform normal interpolation since the directions do not span across North.
-                        if (pressureWinds[windIndex].windDirection < pressureWinds[windIndex - 1].windDirection) {
-                            groundWindDirection = pressureWinds[windIndex].windDirection;
-                        } else {
-                            groundWindDirection = pressureWinds[windIndex - 1].windDirection;
-                        }
-                        groundWindDirection += (groundAltitudeRatio * directionDelta);
-                    } else {
-                        // Adjust directions to avoid spaning across North.
-                        const firstDirection = pressureWinds[windIndex - 1].windDirection - 180.0;
-                        const secondDirection = pressureWinds[windIndex].windDirection - 180.0;
-                        directionDelta = Math.abs(firstDirection - secondDirection);
-
-                        // Now proceed with the interpolation.
-                        groundWindDirection = (firstDirection < secondDirection) ? firstDirection : secondDirection;
-                        groundWindDirection += (groundAltitudeRatio * directionDelta) + 180.0;
-                    }
-                    windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
-                    break;
-                }
-            }
-
-            // Add all the remaining wind entries above ground level.
-            for (; windIndex < pressureWinds.length; ++windIndex) {
-                windList.push(pressureWinds[windIndex]);
-            }
+    // Use the altitude based data first.
+    for (const altWind of altitudeWinds) {
+        if (0 === windList.length) {
+            // Set ground wind values based on the lowest entry.
+            groundWindSpeed = altWind.windSpeed;
+            groundWindDirection = altWind.windDirection;
+            windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
         }
+        windList.push(altWind);
+        highestWindAltitude = altWind.altitude;
     }
-    
+
+    // Now add all the atmospheric pressure based wind.
+    for (const presWind of pressureWinds) {
+        // Ignore any entries at lower altitude than the existing data.
+        if (presWind.altitude <= highestWindAltitude)
+            continue;
+
+        if (0 == windList.length) {
+            // Set ground wind values if no altitude entry was used.
+            groundWindSpeed = presWind.windSpeed;
+            groundWindDirection = presWind.windDirection;
+            windList.push(new WindAtAltitude(0, groundWindSpeed, groundWindDirection));
+        }
+        windList.push(presWind);
+    }
 
     // Pull in all the configurable options to generate the CSV header.
     // Fall back to the same defaults as OpenRocket for any invalid settings.
